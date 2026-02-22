@@ -1,0 +1,221 @@
+code
+Html
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Cubo 3D: Coração vs Cérebro</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        :root {
+            /* Tamanho dinâmico do cubo */
+            --cube-size: 160px;
+            --translate-z: 80px; /* Metade do tamanho */
+        }
+
+        @media (min-width: 768px) {
+            :root {
+                --cube-size: 280px;
+                --translate-z: 140px;
+            }
+        }
+
+        body {
+            /* Impede o scroll e o "puxar para atualizar" no mobile */
+            touch-action: none;
+            overflow: hidden;
+            background-color: #09090b;
+        }
+
+        .scene {
+            perspective: 1200px;
+            width: var(--cube-size);
+            height: var(--cube-size);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .cube {
+            width: 100%;
+            height: 100%;
+            position: relative;
+            transform-style: preserve-3d;
+            cursor: grab;
+            transition: transform 0.05s linear;
+        }
+
+        .cube:active {
+            cursor: grabbing;
+        }
+
+        .face {
+            position: absolute;
+            width: var(--cube-size);
+            height: var(--cube-size);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: calc(var(--cube-size) * 0.55); /* Emoji escala proporcionalmente */
+            border: 2px solid rgba(255, 255, 255, 0.1);
+            backface-visibility: visible;
+            box-shadow: inset 0 0 40px rgba(0, 0, 0, 0.5);
+            user-select: none;
+        }
+
+        /* Lados do Coração */
+        .front  { transform: rotateY(0deg) translateZ(var(--translate-z)); }
+        .right  { transform: rotateY(90deg) translateZ(var(--translate-z)); }
+        .top    { transform: rotateX(90deg) translateZ(var(--translate-z)); }
+
+        /* Lados do Cérebro (Sempre opostos aos corações) */
+        .back   { transform: rotateY(180deg) translateZ(var(--translate-z)); }
+        .left   { transform: rotateY(-90deg) translateZ(var(--translate-z)); }
+        .bottom { transform: rotateX(-90deg) translateZ(var(--translate-z)); }
+
+        /* Brilho de fundo */
+        .bg-glow {
+            background: radial-gradient(circle at center, #1e1b4b 0%, #000 70%);
+            position: fixed;
+            inset: 0;
+            z-index: -1;
+        }
+    </style>
+</head>
+<body class="h-screen w-full flex flex-col items-center justify-between py-12">
+
+    <div class="bg-glow"></div>
+
+    <!-- Cabeçalho -->
+    <div class="text-center z-10 px-6">
+        <h1 class="text-white text-2xl md:text-5xl font-black tracking-tighter uppercase italic leading-none">
+            <span class="text-rose-600 drop-shadow-[0_0_15px_rgba(225,29,72,0.5)]">🫀 Emoção</span>
+            <br class="md:hidden">
+            <span class="text-zinc-500 text-lg md:text-2xl mx-2">vs</span>
+            <br class="md:hidden">
+            <span class="text-indigo-500 drop-shadow-[0_0_15px_rgba(99,102,241,0.5)]">Razão 🧠</span>
+        </h1>
+        <p class="text-zinc-500 text-[10px] md:text-sm font-mono mt-4 tracking-widest uppercase">
+            Arraste rápido para lançar o cubo
+        </p>
+    </div>
+
+    <!-- Espaço do Cubo -->
+    <div class="scene">
+        <div id="cube" class="cube">
+            <!-- Corações -->
+            <div class="face front bg-rose-950/30 border-rose-500/30">🫀</div>
+            <div class="face right bg-rose-950/30 border-rose-500/30">🫀</div>
+            <div class="face top bg-rose-950/30 border-rose-500/30">🫀</div>
+
+            <!-- Cérebros -->
+            <div class="face back bg-indigo-950/30 border-indigo-500/30">🧠</div>
+            <div class="face left bg-indigo-950/30 border-indigo-500/30">🧠</div>
+            <div class="face bottom bg-indigo-950/30 border-indigo-500/30">🧠</div>
+        </div>
+    </div>
+
+    <!-- Rodapé -->
+    <div class="text-center px-6">
+        <div class="flex gap-3">
+            <div class="w-2 h-2 rounded-full bg-rose-600 animate-pulse"></div>
+            <div class="w-2 h-2 rounded-full bg-indigo-600 animate-pulse delay-75"></div>
+            <div class="w-2 h-2 rounded-full bg-zinc-600 animate-pulse delay-150"></div>
+        </div>
+    </div>
+
+    <script>
+        const cube = document.getElementById('cube');
+        
+        let isDragging = false;
+        let rotateX = -25;
+        let rotateY = 45;
+        
+        // Variáveis de física
+        let velocityX = 0;
+        let velocityY = 0;
+        let lastX = 0;
+        let lastY = 0;
+        
+        const friction = 0.96; // Inércia (quanto maior, mais ele gira)
+
+        function updateTransform() {
+            cube.style.transform = `rotateX(${rotateX}deg) rotateY(${rotateY}deg)`;
+        }
+
+        function animate() {
+            if (!isDragging) {
+                // Aplica a velocidade acumulada
+                rotateX += velocityY;
+                rotateY += velocityX;
+
+                // Reduz a velocidade gradualmente
+                velocityX *= friction;
+                velocityY *= friction;
+
+                // Para o cálculo se a velocidade for mínima
+                if (Math.abs(velocityX) < 0.01) velocityX = 0;
+                if (Math.abs(velocityY) < 0.01) velocityY = 0;
+
+                updateTransform();
+            }
+            requestAnimationFrame(animate);
+        }
+
+        // Handlers unificados (Mouse + Touch)
+        function startAction(e) {
+            isDragging = true;
+            velocityX = 0;
+            velocityY = 0;
+            const x = e.clientX || e.touches[0].clientX;
+            const y = e.clientY || e.touches[0].clientY;
+            lastX = x;
+            lastY = y;
+        }
+
+        function moveAction(e) {
+            if (!isDragging) return;
+
+            // Previne o scroll da página no mobile
+            if (e.cancelable) e.preventDefault();
+
+            const x = e.clientX || e.touches[0].clientX;
+            const y = e.clientY || e.touches[0].clientY;
+
+            const deltaX = x - lastX;
+            const deltaY = y - lastY;
+
+            // Sensibilidade do movimento
+            velocityX = deltaX * 0.5;
+            velocityY = -deltaY * 0.5;
+
+            rotateY += velocityX;
+            rotateX += velocityY;
+
+            updateTransform();
+
+            lastX = x;
+            lastY = y;
+        }
+
+        function endAction() {
+            isDragging = false;
+        }
+
+        // Eventos de Mouse
+        window.addEventListener('mousedown', startAction);
+        window.addEventListener('mousemove', moveAction);
+        window.addEventListener('mouseup', endAction);
+
+        // Eventos de Toque
+        window.addEventListener('touchstart', startAction, { passive: false });
+        window.addEventListener('touchmove', moveAction, { passive: false });
+        window.addEventListener('touchend', endAction);
+
+        // Inicia o loop
+        updateTransform();
+        animate();
+    </script>
+</body>
+</html>
