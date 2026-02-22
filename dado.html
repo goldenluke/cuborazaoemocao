@@ -1,0 +1,207 @@
+
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cubo 3D: Razão vs Emoção</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Configurações de perspectiva e 3D */
+        .scene {
+            perspective: 1000px;
+            perspective-origin: center;
+        }
+
+        .cube {
+            width: 200px;
+            height: 200px;
+            position: relative;
+            transform-style: preserve-3d;
+            cursor: grab;
+            user-select: none;
+        }
+
+        .cube:active {
+            cursor: grabbing;
+        }
+
+        .face {
+            position: absolute;
+            width: 200px;
+            height: 200px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 80px;
+            border: 2px solid rgba(255, 255, 255, 0.1);
+            backface-visibility: visible;
+            box-shadow: inset 0 0 30px rgba(0,0,0,0.2);
+        }
+
+        /* Posicionamento das faces no espaço 3D */
+        .front  { transform: rotateY(0deg) translateZ(100px); }
+        .back   { transform: rotateY(180deg) translateZ(100px); }
+        .right  { transform: rotateY(90deg) translateZ(100px); }
+        .left   { transform: rotateY(-90deg) translateZ(100px); }
+        .top    { transform: rotateX(90deg) translateZ(100px); }
+        .bottom { transform: rotateX(-90deg) translateZ(100px); }
+
+        /* Brilho pulsante suave */
+        @keyframes pulse-light {
+            0%, 100% { opacity: 0.4; }
+            50% { opacity: 0.7; }
+        }
+        .glow {
+            position: absolute;
+            width: 150%;
+            height: 150%;
+            background: radial-gradient(circle, rgba(239,68,68,0.15) 0%, transparent 70%);
+            animation: pulse-light 3s infinite;
+            pointer-events: none;
+        }
+    </style>
+</head>
+<body class="bg-zinc-950 h-screen flex flex-col items-center justify-center overflow-hidden font-sans">
+
+    <!-- Texto Informativo -->
+    <div class="absolute top-10 text-center z-10">
+        <h1 class="text-white text-3xl font-black tracking-widest uppercase mb-2">
+            🫀 <span class="text-transparent bg-clip-text bg-gradient-to-r from-red-500 to-purple-500">Dualidade</span> 🧠
+        </h1>
+        <p class="text-zinc-500 text-sm font-mono tracking-tighter">ARRASTE PARA LANÇAR O CUBO</p>
+    </div>
+
+    <!-- Efeito de fundo -->
+    <div class="glow"></div>
+
+    <!-- Container do Cubo -->
+    <div class="scene">
+        <div id="cube" class="cube">
+            <!-- Corações (Lados: Frente, Direita, Topo) -->
+            <div class="face front bg-red-500/10 backdrop-blur-md border-red-500/30">🫀</div>
+            <div class="face right bg-red-500/10 backdrop-blur-md border-red-500/30">🫀</div>
+            <div class="face top bg-red-500/10 backdrop-blur-md border-red-500/30">🫀</div>
+
+            <!-- Cérebros (Lados opostos: Trás, Esquerda, Baixo) -->
+            <div class="face back bg-purple-500/10 backdrop-blur-md border-purple-500/30">🧠</div>
+            <div class="face left bg-purple-500/10 backdrop-blur-md border-purple-500/30">🧠</div>
+            <div class="face bottom bg-purple-500/10 backdrop-blur-md border-purple-500/30">🧠</div>
+        </div>
+    </div>
+
+    <!-- Instrução Inferior -->
+    <div class="absolute bottom-10 flex gap-4">
+        <div class="px-4 py-2 rounded-full border border-red-500/50 text-red-500 text-xs font-bold uppercase">Emoção</div>
+        <div class="px-4 py-2 rounded-full border border-purple-500/50 text-purple-500 text-xs font-bold uppercase">Razão</div>
+    </div>
+
+    <script>
+        const cube = document.getElementById('cube');
+        
+        // Estado da rotação e física
+        let isDragging = false;
+        let rotateX = -20;
+        let rotateY = 30;
+        
+        let velocityX = 0;
+        let velocityY = 0;
+        let lastMouseX = 0;
+        let lastMouseY = 0;
+        
+        const friction = 0.97; // Multiplicador de desaceleração (inércia)
+
+        // Função para atualizar a posição visual
+        function updateTransform() {
+            cube.style.transform = `rotateX(${rotateX}deg) rotateY(${rotateY}deg)`;
+        }
+
+        // Loop de animação (Física de jogar)
+        function animate() {
+            if (!isDragging) {
+                // Aplica a velocidade acumulada aos ângulos
+                rotateY += velocityX;
+                rotateX += velocityY;
+
+                // Aplica fricção (reduz a velocidade aos poucos)
+                velocityX *= friction;
+                velocityY *= friction;
+
+                // Para o cálculo se o movimento for insignificante
+                if (Math.abs(velocityX) < 0.01) velocityX = 0;
+                if (Math.abs(velocityY) < 0.01) velocityY = 0;
+
+                updateTransform();
+            }
+            requestAnimationFrame(animate);
+        }
+
+        // --- Eventos de Mouse ---
+        window.addEventListener('mousedown', (e) => {
+            isDragging = true;
+            velocityX = 0;
+            velocityY = 0;
+            lastMouseX = e.clientX;
+            lastMouseY = e.clientY;
+        });
+
+        window.addEventListener('mousemove', (e) => {
+            if (!isDragging) return;
+
+            const deltaX = e.clientX - lastMouseX;
+            const deltaY = e.clientY - lastMouseY;
+
+            // Define a velocidade baseada no movimento do mouse
+            velocityX = deltaX * 0.5;
+            velocityY = -deltaY * 0.5;
+
+            // Atualiza os ângulos imediatamente durante o drag
+            rotateY += velocityX;
+            rotateX += velocityY;
+
+            updateTransform();
+
+            lastMouseX = e.clientX;
+            lastMouseY = e.clientY;
+        });
+
+        window.addEventListener('mouseup', () => {
+            isDragging = false;
+        });
+
+        // --- Eventos de Toque (Mobile) ---
+        window.addEventListener('touchstart', (e) => {
+            isDragging = true;
+            velocityX = 0;
+            velocityY = 0;
+            lastMouseX = e.touches[0].clientX;
+            lastMouseY = e.touches[0].clientY;
+        });
+
+        window.addEventListener('touchmove', (e) => {
+            if (!isDragging) return;
+            const deltaX = e.touches[0].clientX - lastMouseX;
+            const deltaY = e.touches[0].clientY - lastMouseY;
+
+            velocityX = deltaX * 0.5;
+            velocityY = -deltaY * 0.5;
+
+            rotateY += velocityX;
+            rotateX += velocityY;
+
+            updateTransform();
+
+            lastMouseX = e.touches[0].clientX;
+            lastMouseY = e.touches[0].clientY;
+        });
+
+        window.addEventListener('touchend', () => {
+            isDragging = false;
+        });
+
+        // Inicia o processo
+        updateTransform();
+        animate();
+    </script>
+</body>
+</html>
